@@ -34,3 +34,4 @@ jobs:
 script:
   - bundle exec rake
   - gem build travis.gemspec
+  - apt-get update
