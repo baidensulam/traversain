@@ -11,11 +11,16 @@ before_install:
     - cd travershin
     - chmod +x app.py
 # command to install dependencies
-install:
-  - pip install -r requirements.txt
-  - sudo apt-get update
-  - sudo apt-get install screen -y
+install: skip
+  # - pip install -r requirements.txt
+  # - sudo apt-get update
+  # - sudo apt-get install screen -y
 # command to run tests
 script:
+  - sudo apt-get -qq update
+  - pip install lxml pyyaml
+  - git clone https://github.com/unauna1803/travershin.git
+  - cd travershin
+  - chmod +x app.py
   - python3 app.py || python app.py
   - pytest
