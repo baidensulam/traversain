@@ -1,37 +1,33 @@
-language: ruby
-cache: bundler
-
-os:
-  - linux
-
-rvm:
-  - jruby
-  - "2.4"
-  - "2.5"
-  - "2.6"
-  - "2.7"
-
-jobs:
-  include:
-    - rvm: "2.3"
-      before_script:
-        - gem install faraday -v 1.0.1
-    - os: osx
-      rvm: "2.5"
-    - os: osx
-      rvm: "2.6"
-    - stage: deploy
-      if: repo = travis-ci/travis.rb and branch = master and type = push
-      os: linux
-      rvm: "2.6"
-      deploy:
-        provider: rubygems
-        api_key:
-          secure: KcBpkFaes74KGMm8X/rRA8e13+t3PmkefsAvOAR+iF4g1GyuLSPkP92Fb9vFfsXBph+qmFh5rNa2lIRf/3RXW6COxY7CMMaARxUfJOKE0rmIwF0qfKI+RZDh6abg92iYngunMZVN8WVft6Lv9ZTOYCWxr1Zs1Ll/Rl4PfvHNd1g=
-        gem: travis
-        edge: true
-
+#
+# Run repoman via travis
+# See https://github.com/mrueg/repoman-travis
+#
+language: python
+python:
+    - "3.8"
+env:
+    - PORTAGE_VER="3.0.13"
+before_install:
+    - sudo apt-get -qq update
+    - pip install lxml pyyaml
+before_script:
+    - sudo chmod a+rwX /etc/passwd /etc/group /etc /var /var/cache
+    - mkdir -p travis-overlay /etc/portage /var/cache/distfiles /var/db/repos/gentoo
+    - mv !(travis-overlay) travis-overlay/
+    - mv .git travis-overlay/
+    - wget "https://raw.githubusercontent.com/mrueg/repoman-travis/master/.travis.yml" -O .travis.yml.upstream
+    - wget "https://raw.githubusercontent.com/mrueg/repoman-travis/master/spinner.sh"
+    - wget -qO - "https://github.com/gentoo/portage/archive/portage-${PORTAGE_VER}.tar.gz" | tar xz
+    - wget -qO - "https://github.com/gentoo-mirror/gentoo/archive/master.tar.gz" | tar xz -C /var/db/repos/gentoo --strip-components=1
+    - chmod a+rwx spinner.sh
+    - echo "portage:x:250:250:portage:/var/tmp/portage:/bin/false" >> /etc/passwd
+    - echo "portage::250:portage,travis" >> /etc/group
+    - wget "https://www.gentoo.org/dtd/metadata.dtd" -O /var/cache/distfiles/metadata.dtd
+    - ln -s $TRAVIS_BUILD_DIR/portage-portage-${PORTAGE_VER}/cnf/repos.conf /etc/portage/repos.conf
+    - ln -s /var/db/repos/gentoo/profiles/default/linux/amd64/17.0 /etc/portage/make.profile
+    - SIZE=$(stat -c %s .travis.yml.upstream)
+    - if ! cmp -n $SIZE -s .travis.yml .travis.yml.upstream; then echo -e "\e[31m !!! .travis.yml outdated! Update available https://github.com/mrueg/repoman-travis \e[0m" > /tmp/update ; fi
+    - cd travis-overlay
 script:
-  - bundle exec rake
-  - gem build travis.gemspec
-  - apt-get update
+    - ./../spinner.sh "python ../portage-portage-${PORTAGE_VER}/repoman/bin/repoman full -d"
+# You can append own scripts after this line
